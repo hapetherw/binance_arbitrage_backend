@@ -8,17 +8,20 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
+      symbol1: {
+        type: Sequelize.STRING
+      },
+      symbol2: {
+        type: Sequelize.STRING
+      },
+      symbol3: {
+        type: Sequelize.STRING
+      },
       first_pair: {
         type: Sequelize.STRING
       },
       first_pair_type: {
         type: Sequelize.ENUM('buy', 'sell')
-      },
-      first_symbol1: {
-        type: Sequelize.STRING
-      },
-      first_symbol2: {
-        type: Sequelize.STRING
       },
       first_symbol1_amount: {
         type: Sequelize.DOUBLE
@@ -35,12 +38,6 @@ module.exports = {
       second_pair_type: {
         type: Sequelize.ENUM('buy', 'sell')
       },
-      second_symbol1: {
-        type: Sequelize.STRING
-      },
-      second_symbol2: {
-        type: Sequelize.STRING
-      },
       second_symbol1_amount: {
         type: Sequelize.DOUBLE
       },
@@ -55,12 +52,6 @@ module.exports = {
       },
       third_pair_type: {
         type: Sequelize.ENUM('buy', 'sell')
-      },
-      third_symbol1: {
-        type: Sequelize.STRING
-      },
-      third_symbol2: {
-        type: Sequelize.STRING
       },
       third_symbol1_amount: {
         type: Sequelize.DOUBLE
