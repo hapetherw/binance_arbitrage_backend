@@ -10,8 +10,8 @@ module.exports = {
 		logging: true,
 	},
 	production: {
-		username: 'bet75',
-		password: '77CPGoy_$6C=',
+		username: 'arbitrage',
+		password: 'pTExTTGB5dzP',
 		database: 'arbitrage_db',
 		host: '127.0.0.1',
 		port: 3306,
