@@ -66,7 +66,7 @@ exports.setSetting = async (req, res) => {
     try {
         await Model.setting.update(
             {
-                base_coin: baseCoin,
+                base_coin: baseCoin.toUpperCase(),
                 init_amount: initAmount,
                 profit_percentage: profitPercentage
             },

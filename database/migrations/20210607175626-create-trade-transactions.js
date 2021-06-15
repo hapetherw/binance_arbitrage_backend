@@ -65,7 +65,7 @@ module.exports = {
       fee_amount: {
         type: Sequelize.DOUBLE
       },
-      fee_percentange: {
+      fee_percentage: {
         type: Sequelize.DOUBLE
       },
       profit_amount: {

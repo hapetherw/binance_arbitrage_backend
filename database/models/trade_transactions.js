@@ -33,7 +33,7 @@ module.exports = (sequelize, DataTypes) => {
     third_pair_type: DataTypes.ENUM('buy', 'sell'),
     third_exchange_price: DataTypes.DOUBLE,
     fee_amount: DataTypes.DOUBLE,
-    fee_percentange: DataTypes.DOUBLE,
+    fee_percentage: DataTypes.DOUBLE,
     profit_amount: DataTypes.DOUBLE,
     profit_percentage: DataTypes.DOUBLE,
     status: DataTypes.ENUM('COMPLETE', 'PROGRESS', 'FAIL'),

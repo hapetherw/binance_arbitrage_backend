@@ -192,7 +192,7 @@ let triangle = {
               let lv_calc,lv_str;
               if(d.l1 === 'num'){
                 lv_calc = symValJ[d.lv1]["bidPrice"];
-                lv_str = d.d1 +  '->' + d.lv1 + "['bidP']['" + symValJ[d.lv1]["bidPrice"] + "']" + '->' + d.d2 + '<br/>';
+                // lv_str = d.d1 +  '->' + d.lv1 + "['bidP']['" + symValJ[d.lv1]["bidPrice"] + "']" + '->' + d.d2 + '<br/>';
                 amount1 = amount.times(symValJ[d.lv1]["bidPrice"]);
                 fee1 = amount1.times(fee_percentage);
                 amount = amount1.minus(fee1);
@@ -201,7 +201,7 @@ let triangle = {
               }
               else{
                 lv_calc = 1/symValJ[d.lv1]["askPrice"];
-                lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
+                // lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
                 amount1 = amount.times(1).div(symValJ[d.lv1]["askPrice"]);
                 fee1 = amount1.times(fee_percentage);
                 amount = amount1.minus(fee1);
@@ -212,19 +212,19 @@ let triangle = {
               //Level 2 calculation
               if(d.l2 === 'num'){
                   lv_calc *= symValJ[d.lv2]["bidPrice"];
-                  lv_str  += d.d2 +  '->' + d.lv2 + "['bidP']['" + symValJ[d.lv2]["bidPrice"] + "']" +  '->' + d.d3+ '<br/>';
+                //   lv_str  += d.d2 +  '->' + d.lv2 + "['bidP']['" + symValJ[d.lv2]["bidPrice"] + "']" +  '->' + d.d3+ '<br/>';
                   amount2 = amount.times(symValJ[d.lv2]["bidPrice"]);
                   fee2 = amount2.times(fee_percentage);
                   amount = amount2.minus(fee2);
-				  d.ex_price2 = symValJ[d.lv1]["bidPrice"];
+				  d.ex_price2 = symValJ[d.lv2]["bidPrice"];
                 }
               else{
                   lv_calc *= 1/symValJ[d.lv2]["askPrice"];
-                  lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
+                //   lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
                   amount2 = amount.times(1).div(symValJ[d.lv2]["askPrice"]);
                   fee2 = amount2.times(fee_percentage);
                   amount = amount2.minus(fee2);
-				  d.ex_price2 = symValJ[d.lv1]["askPrice"];
+				  d.ex_price2 = symValJ[d.lv2]["askPrice"];
               }
 
               //Level 3 calculation
@@ -232,38 +232,33 @@ let triangle = {
                   total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
 
                   lv_calc *= symValJ[d.lv3]["bidPrice"];
-                  lv_str  += d.d3 +  '->' + d.lv3 + "['bidP']['" + symValJ[d.lv3]["bidPrice"] + "']" + '->' +  d.d1 ;
+                //   lv_str  += d.d3 +  '->' + d.lv3 + "['bidP']['" + symValJ[d.lv3]["bidPrice"] + "']" + '->' +  d.d1 ;
                   amount3 = amount.times(symValJ[d.lv3]["bidPrice"]);
                   fee3 = amount3.times(fee_percentage);
                   amount = amount3.minus(fee3);
                   total_fee = total_fee.plus(fee3);
-				  d.ex_price3 = symValJ[d.lv1]["bidPrice"];
+				  d.ex_price3 = symValJ[d.lv3]["bidPrice"];
                 }
               else{
                 total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
 
                   lv_calc *= 1/symValJ[d.lv3]["askPrice"];
-                  lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
+                //   lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
                   amount3 = amount.times(1).div(symValJ[d.lv3]["askPrice"]);
                   fee3 = amount3.times(fee_percentage);
                   amount = amount3.minus(fee3);
                   total_fee = total_fee.plus(fee3);
-				  d.ex_price3 = symValJ[d.lv1]["askPrice"];
+				  d.ex_price3 = symValJ[d.lv3]["askPrice"];
               }
               let total_percentage = total_fee.times(100).div(setting.init_amount);
               d.fee_percentage = total_percentage.toNumber();
-              // d.amount = amount;
-              // lv_str += '<br/>' + total_percentage + '->' + amount + '->' + lv_calc;
               d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
               d.profit_percentage = d.value - d.fee_percentage;
 			  d.date = new Date();
-              // lv_str += '->' + d.profit_percentage;
-              // console.log(d.value, d.fee_percentage);
-              d.tpath = lv_str;
 			  d.amount1 = setting.init_amount;
-			  d.amount2 = amount1;
-			  d.amount3 = amount2;
-			  d.amount4 = amount3;
+			  d.amount2 = amount1.toNumber();
+			  d.amount3 = amount2.toNumber();
+			  d.amount4 = amount3.toNumber();
 			  d.is_done = false;
               if(d.profit_percentage >= setting.profit_percentage) {
                 let isStop = false;
@@ -602,34 +597,34 @@ let triangle = {
         await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.d1 === setting.base_coin && d.value > 0)).desc(u => u.value));
 
         console.log(returnFlag);
-        // const accountInfo = await binanceRest.account();
-        // let accountBalance = 0;
-        // const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
-        // if (balanceObj) {
-        //   accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
-        // }
-        // const date = new Date();
-        // const statisticsInfo = await Model.trade_transaction.findOne({
-        //   where: {
-        //     createdAt: {
-        //       [Op.gte]: date,
-        //     }
-        //   },
-        //   attributes: [
-        //     [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount'],
-        //     [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
-        //   ]
-        // });
-        // const totalProfitInfo = await Model.trade_transaction.findOne({
-        //   attributes: [
-        //     [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount']
-        //   ]
-        // });
-        // await io.sockets.emit("ARBITRAGE_STATISTICS",{
-        //   accountBalance,
-        //   statisticsInfo,
-        //   totalProfitInfo
-        // });
+        const accountInfo = await binanceRest.account();
+        let accountBalance = 0;
+        const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
+        if (balanceObj) {
+          accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
+        }
+        const date = new Date();
+        const statisticsInfo = await Model.trade_transaction.findOne({
+          where: {
+            createdAt: {
+              [Op.gte]: date,
+            }
+          },
+          attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount'],
+            [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
+          ]
+        });
+        const totalProfitInfo = await Model.trade_transaction.findOne({
+          attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount']
+          ]
+        });
+        await io.sockets.emit("ARBITRAGE_STATISTICS",{
+          accountBalance,
+          statisticsInfo,
+          totalProfitInfo
+        });
     //   });
     });
   },
