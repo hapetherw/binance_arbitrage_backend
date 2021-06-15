@@ -14,6 +14,7 @@ const mutex = new Mutex();
 const fs = require('fs');
 const { Op, Sequelize } = require('sequelize');
 const { exit } = require('process');
+const routes = require('../routes');
 let app,server,io;
 
 const binanceApiKey = process.env.BINANCE_KEY;
@@ -28,7 +29,9 @@ let triangle = {
   //pairs:[],//{1:BTC,2:ETH,3:XRP,value:}
   getPairs: async () => {
     const setting = await Model.setting.findOne({
-      id: 1,
+		where: {
+			id: 1
+		}
     });
     return new Promise((res,rej) => {
         const bRest = new api.BinanceRest({
@@ -44,6 +47,8 @@ let triangle = {
           let symbols=[],validPairs=[];
           r1.symbols.forEach(d => {
             filters[d.symbol] = {};
+			filters[d.symbol].baseAssetPrecision = d['baseAssetPrecision'];
+			filters[d.symbol].quoteAssetPrecision = d['quoteAssetPrecision'];
             d.filters.forEach(filter => {
               if (filter['filterType'] === 'LOT_SIZE') {
                 filters[d.symbol].LOT_SIZE = filter;
@@ -129,11 +134,14 @@ let triangle = {
       app = express();
       server = app.listen(3000,() => {console.log('Arbitrage Bot has just started on port 3000. Please wait.....');});
       app.use(cors());
-      app.use('/JS',express.static(path.join(__dirname,'../Pages/JS')))
-      let renderPage = (req,res) => {
-        res.sendFile(path.join(__dirname,"../Pages/index.html"));
-      };
-      app.get('/',renderPage);
+	  app.use(express.json());
+	  app.use(express.urlencoded({ extended: true }));
+	  app.use('/api/', routes);
+    //   app.use('/JS',express.static(path.join(__dirname,'../Pages/JS')))
+    //   let renderPage = (req,res) => {
+    //     res.sendFile(path.join(__dirname,"../Pages/index.html"));
+    //   };
+    //   app.get('/',renderPage);
       io = socket(server);
       res();
     });
@@ -141,9 +149,6 @@ let triangle = {
   calculate: async () => {
     console.log('Finished SetUp. Open "http://127.0.0.1:3000/" in your browser to access. Happy Trading!!');
     const fee_percentage = 0.1 * 0.01;
-    const setting = await Model.setting.findOne({
-      id: 1,
-    });
     const binanceRest = new api.BinanceRest({
         key: binanceApiKey, // Get this from your account on binance.com
         secret: binanceSecretKey, // Same for this
@@ -155,10 +160,18 @@ let triangle = {
     let returnFlag = false;
     let binanceWS = new api.BinanceWS();
     binanceWS.onAllTickers(async (data) => {
-      if (returnFlag) {
-        return;
-      }
-      // await mutex.runExclusive(async () => {
+		const setting = await Model.setting.findOne({
+			where: {
+				id: 1
+			}
+		});
+		if (setting.is_paused) {
+			return;
+		}
+		if (returnFlag) {
+			return;
+		}
+	// await mutex.runExclusive(async () => {
         //Update JSON
         data.forEach(d => {
           symValJ[d.symbol].bidPrice = parseFloat(d.bestBid);
@@ -184,6 +197,7 @@ let triangle = {
                 fee1 = amount1.times(fee_percentage);
                 amount = amount1.minus(fee1);
                 total_fee = fee1.times(1).div(symValJ[d.lv1]["askPrice"]);
+				d.ex_price1 = symValJ[d.lv1]["bidPrice"];
               }
               else{
                 lv_calc = 1/symValJ[d.lv1]["askPrice"];
@@ -192,6 +206,7 @@ let triangle = {
                 fee1 = amount1.times(fee_percentage);
                 amount = amount1.minus(fee1);
                 total_fee = fee1.times(symValJ[d.lv1]["bidPrice"]);
+				d.ex_price1 = symValJ[d.lv1]["askPrice"];
               }
 
               //Level 2 calculation
@@ -201,6 +216,7 @@ let triangle = {
                   amount2 = amount.times(symValJ[d.lv2]["bidPrice"]);
                   fee2 = amount2.times(fee_percentage);
                   amount = amount2.minus(fee2);
+				  d.ex_price2 = symValJ[d.lv1]["bidPrice"];
                 }
               else{
                   lv_calc *= 1/symValJ[d.lv2]["askPrice"];
@@ -208,6 +224,7 @@ let triangle = {
                   amount2 = amount.times(1).div(symValJ[d.lv2]["askPrice"]);
                   fee2 = amount2.times(fee_percentage);
                   amount = amount2.minus(fee2);
+				  d.ex_price2 = symValJ[d.lv1]["askPrice"];
               }
 
               //Level 3 calculation
@@ -220,6 +237,7 @@ let triangle = {
                   fee3 = amount3.times(fee_percentage);
                   amount = amount3.minus(fee3);
                   total_fee = total_fee.plus(fee3);
+				  d.ex_price3 = symValJ[d.lv1]["bidPrice"];
                 }
               else{
                 total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
@@ -230,17 +248,24 @@ let triangle = {
                   fee3 = amount3.times(fee_percentage);
                   amount = amount3.minus(fee3);
                   total_fee = total_fee.plus(fee3);
+				  d.ex_price3 = symValJ[d.lv1]["askPrice"];
               }
               let total_percentage = total_fee.times(100).div(setting.init_amount);
               d.fee_percentage = total_percentage.toNumber();
               // d.amount = amount;
               // lv_str += '<br/>' + total_percentage + '->' + amount + '->' + lv_calc;
               d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
-              d.final_value = d.value - d.fee_percentage;
-              // lv_str += '->' + d.final_value;
+              d.profit_percentage = d.value - d.fee_percentage;
+			  d.date = new Date();
+              // lv_str += '->' + d.profit_percentage;
               // console.log(d.value, d.fee_percentage);
               d.tpath = lv_str;
-              if(d.final_value >= setting.profit_percentage) {
+			  d.amount1 = setting.init_amount;
+			  d.amount2 = amount1;
+			  d.amount3 = amount2;
+			  d.amount4 = amount3;
+			  d.is_done = false;
+              if(d.profit_percentage >= setting.profit_percentage) {
                 let isStop = false;
                 console.log(d.value, d.fee_percentage);
                 console.log(setting.init_amount , amount1.toNumber());
@@ -255,8 +280,8 @@ let triangle = {
                 try {
 					let filterStatus = module.exports.applyFilters(d.lv1, quantity1, d.l1, symValJ[d.lv1]["bidPrice"]);
 					if (!isStop && filterStatus == 1) {
+						quantity1 = module.exports.checkStepSize(d.lv1, quantity1, d.l1);
 						if (d.l1 === 'num') {
-							quantity1 = module.exports.checkStepSize(d.lv1, quantity1);
 							result1 = await binanceRest.testOrder({
 								symbol: d.lv1,
 								quantity: quantity1.toNumber(),
@@ -286,7 +311,7 @@ let triangle = {
 						return;
 					}
                 } catch(err) {
-                  console.log('result1-err');
+                  console.log('result1 test-err');
                   console.log(err);
                   console.log({
                     symbol: d.lv1,
@@ -301,8 +326,8 @@ let triangle = {
                 try {
 					let filterStatus = module.exports.applyFilters(d.lv2, quantity2, d.l2, symValJ[d.lv2]["bidPrice"]);
 					if (!isStop && filterStatus == 1) {
+						quantity2 = module.exports.checkStepSize(d.lv2, quantity2, d.l2);
 						if (d.l2 === 'num') {
-							quantity2 = module.exports.checkStepSize(d.lv2, quantity2);
 							result2 = await binanceRest.testOrder({
 								symbol: d.lv2,
 								quantity: quantity2.toNumber(),
@@ -332,7 +357,7 @@ let triangle = {
 						return;
 					}
                 } catch(err) {
-                  console.log('result2-err');
+                  console.log('result2 test-err');
                   console.log(err);
                   console.log({
                       symbol: d.lv2,
@@ -347,8 +372,8 @@ let triangle = {
                 try{
 					let filterStatus = module.exports.applyFilters(d.lv3, quantity3, d.l3, symValJ[d.lv3]["bidPrice"]);
 					if (!isStop && filterStatus == 1) {
+						quantity3 = module.exports.checkStepSize(d.lv3, quantity3, d.l3);
 						if (d.l3 === 'num') {
-							quantity3 = module.exports.checkStepSize(d.lv3, quantity3);
 							result3 = await binanceRest.testOrder({
 								symbol: d.lv3,
 								quantity: quantity3.toNumber(),
@@ -378,7 +403,7 @@ let triangle = {
 						return;
 					}
                 } catch(err) {
-                  console.log('result3-err');
+                  console.log('result3 test-err');
                   console.log(err);
                   console.log({
                       symbol: d.lv3,
@@ -401,7 +426,7 @@ let triangle = {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity1) < 0) {
 								quantity1 = balance;
-								quantity1 = module.exports.checkStepSize(d.lv1, quantity1);
+								quantity1 = module.exports.checkStepSize(d.lv1, quantity1, d.l1);
 							}
 						}
 						result1 = await binanceRest.newOrder({
@@ -412,13 +437,14 @@ let triangle = {
 							newClientOrderId: customOrderId1,
 						});
                     } else {
-						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d2);
+						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d1);
 						if (balanceObj) {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity1) < 0) {
 								quantity1 = balance;
 							}
 						}
+						quantity1 = module.exports.checkStepSize(d.lv1, quantity1, d.l1);
 						result1 = await binanceRest.newOrder({
 							symbol: d.lv1,
 							quoteOrderQty: quantity1.toNumber(),
@@ -447,7 +473,7 @@ let triangle = {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity2) < 0) {
 								quantity2 = balance;
-								quantity2 = module.exports.checkStepSize(d.lv2, quantity2);
+								quantity2 = module.exports.checkStepSize(d.lv2, quantity2, d.l2);
 							}
 						}
 						result2 = await binanceRest.newOrder({
@@ -458,13 +484,14 @@ let triangle = {
 							newClientOrderId: customOrderId2,
 						});
                     } else {
-						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d3);
+						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d2);
 						if (balanceObj) {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity2) < 0) {
 								quantity2 = balance;
 							}
 						}
+						quantity2 = module.exports.checkStepSize(d.lv2, quantity2, d.l2);
 						result2 = await binanceRest.newOrder({
 							symbol: d.lv2,
 							quoteOrderQty: quantity2.toNumber(),
@@ -493,7 +520,7 @@ let triangle = {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity3) < 0) {
 								quantity3 = balance;
-								quantity3 = module.exports.checkStepSize(d.lv3, quantity3);
+								quantity3 = module.exports.checkStepSize(d.lv3, quantity3, d.l3);
 							}
 						}
 						result3 = await binanceRest.newOrder({
@@ -504,13 +531,14 @@ let triangle = {
 							newClientOrderId: customOrderId3,
 						});
                     } else {
-						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d1);
+						const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d3);
 						if (balanceObj) {
 							const balance = new Big(balanceObj['free']).minus(balanceObj['locked']);
 							if (balance.cmp(quantity3) < 0) {
 								quantity3 = balance;
 							}
 						}
+						quantity3 = module.exports.checkStepSize(d.lv3, quantity3, d.l3);
 						result3 = await binanceRest.newOrder({
 							symbol: d.lv3,
 							quoteOrderQty: quantity3.toNumber(),
@@ -532,7 +560,7 @@ let triangle = {
 					return;
                   }
                   const accountInfo = await binanceRest.account();
-                  const orderProfit = 0;
+                  let orderProfit = 0;
                   const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
                   if (balanceObj) {
                     orderProfit = new Big(balanceObj['free']);
@@ -560,9 +588,10 @@ let triangle = {
                     fee_amount: total_fee.toNumber(),
                     fee_percentage: total_percentage.toNumber(),
                     profit_amount: orderProfit.toNumber(),
-                    profit_percentage: d.final_value
+                    profit_percentage: d.profit_percentage
                   });
                   console.log(trade);
+				  d.is_done = true;
                 }
 			}
           }
@@ -570,14 +599,14 @@ let triangle = {
         });
 
         //Send Socket
-        await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.value > 0)).desc(u => u.value));
+        await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.d1 === setting.base_coin && d.value > 0)).desc(u => u.value));
 
         console.log(returnFlag);
         // const accountInfo = await binanceRest.account();
-        // const accountBalance = 0;
+        // let accountBalance = 0;
         // const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
         // if (balanceObj) {
-        //   accountBalance = parseFloat(balance['free']) - parseFloat(balance['locked']);
+        //   accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
         // }
         // const date = new Date();
         // const statisticsInfo = await Model.trade_transaction.findOne({
@@ -601,7 +630,7 @@ let triangle = {
         //   statisticsInfo,
         //   totalProfitInfo
         // });
-      // });
+    //   });
     });
   },
   test: async () => {
@@ -663,12 +692,16 @@ let triangle = {
 		}
 	}
   },
-  checkStepSize (symbol, quantity) {
-	if (Number(filters[symbol]['LOT_SIZE']['stepSize']) != 0) {
-		let restValue = quantity.minus(+filters[symbol]['LOT_SIZE']['minQty']).mod(+filters[symbol]['LOT_SIZE']['stepSize']);
-		if (restValue.toNumber() != 0) {
-			quantity = quantity.minus(restValue);
+  checkStepSize (symbol, quantity, type) {
+	if (type === 'num') {
+		if (Number(filters[symbol]['LOT_SIZE']['stepSize']) != 0) {
+			let restValue = quantity.minus(+filters[symbol]['LOT_SIZE']['minQty']).mod(+filters[symbol]['LOT_SIZE']['stepSize']);
+			if (restValue.toNumber() != 0) {
+				quantity = quantity.minus(restValue);
+			}
 		}
+	} else {
+		quantity = new Big(quantity.toFixed(filters[symbol]['quoteAssetPrecision']));
 	}
 	return quantity;
   },

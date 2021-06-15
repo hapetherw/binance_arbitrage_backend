@@ -26,3 +26,11 @@ socket.on('ARBITRAGE',(pl) => {
     document.getElementById('tartbitBody').innerHTML = markup;
   }
 });
+
+socket.on('ARBITRAGE_STATISTICS',(pl) => {
+  let markup = '';
+  pl.filter(p => p.value >= mimPL).forEach((d,i) => {
+    markup += "<tr class='table-success'><td>" + (i+1) + "</td><td>" + d.tpath + "</td><td>" + d.value + "</td></tr>";
+  });
+  document.getElementById('tartbitBody').innerHTML = markup;
+});

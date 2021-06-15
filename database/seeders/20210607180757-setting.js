@@ -10,6 +10,7 @@ module.exports = {
        base_coin: 'BUSD',
        init_amount: 5,
        profit_percentage: 0.1,
+       is_paused: false,
        createdAt: new Date(),
        updatedAt: new Date()
      }], {});

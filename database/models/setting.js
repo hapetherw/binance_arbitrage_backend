@@ -16,7 +16,8 @@ module.exports = (sequelize, DataTypes) => {
   setting.init({
     base_coin: DataTypes.STRING,
     init_amount: DataTypes.DOUBLE,
-    profit_percentage: DataTypes.DOUBLE
+    profit_percentage: DataTypes.DOUBLE,
+    is_paused: DataTypes.BOOLEAN
   }, {
     sequelize,
     modelName: 'setting',
