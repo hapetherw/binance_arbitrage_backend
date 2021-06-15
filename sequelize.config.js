@@ -11,7 +11,7 @@ module.exports = {
 	},
 	production: {
 		username: 'arbitrage',
-		password: 'pTExTTGB5dzP',
+		password: 'G]~5dTbhp!kK',
 		database: 'arbitrage_db',
 		host: '127.0.0.1',
 		port: 3306,
