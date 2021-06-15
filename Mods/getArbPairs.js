@@ -606,34 +606,34 @@ let triangle = {
 			await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.d1 === setting.base_coin && d.value > 0)).desc(u => u.value));
 
 			console.log(returnFlag);
-			// const accountInfo = await binanceRest.account();
-			// let accountBalance = 0;
-			// const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
-			// if (balanceObj) {
-			//   accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
-			// }
-			// const date = new Date();
-			// const statisticsInfo = await Model.trade_transaction.findOne({
-			//   where: {
-			//     createdAt: {
-			//       [Op.gte]: date,
-			//     }
-			//   },
-			//   attributes: [
-			//     [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount'],
-			//     [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
-			//   ]
-			// });
-			// const totalProfitInfo = await Model.trade_transaction.findOne({
-			//   attributes: [
-			//     [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount']
-			//   ]
-			// });
-			// await io.sockets.emit("ARBITRAGE_STATISTICS",{
-			//   accountBalance,
-			//   statisticsInfo,
-			//   totalProfitInfo
-			// });
+			const accountInfo = await binanceRest.account();
+			let accountBalance = 0;
+			const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
+			if (balanceObj) {
+			  accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
+			}
+			const date = new Date();
+			const statisticsInfo = await Model.trade_transaction.findOne({
+			  where: {
+			    createdAt: {
+			      [Op.gte]: date,
+			    }
+			  },
+			  attributes: [
+			    [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount'],
+			    [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
+			  ]
+			});
+			const totalProfitInfo = await Model.trade_transaction.findOne({
+			  attributes: [
+			    [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount']
+			  ]
+			});
+			await io.sockets.emit("ARBITRAGE_STATISTICS",{
+			  accountBalance,
+			  statisticsInfo,
+			  totalProfitInfo
+			});
 		});
 	});
   },
