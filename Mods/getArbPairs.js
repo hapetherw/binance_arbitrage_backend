@@ -131,18 +131,22 @@ let triangle = {
   },
   startServer : () => {
     return new Promise((res,rej) => {
-      app = express();
-      server = app.listen(3000,() => {console.log('Arbitrage Bot has just started on port 3000. Please wait.....');});
-      app.use(cors());
-	  app.use(express.json());
-	  app.use(express.urlencoded({ extended: true }));
-	  app.use('/api/', routes);
-    //   app.use('/JS',express.static(path.join(__dirname,'../Pages/JS')))
-    //   let renderPage = (req,res) => {
-    //     res.sendFile(path.join(__dirname,"../Pages/index.html"));
-    //   };
-    //   app.get('/',renderPage);
-      io = socket(server);
+		app = express();
+		server = app.listen(3000,() => {console.log('Arbitrage Bot has just started on port 3000. Please wait.....');});
+		app.use(cors());
+		app.use(express.json());
+		app.use(express.urlencoded({ extended: true }));
+		app.use('/api/', routes);
+	//   app.use('/JS',express.static(path.join(__dirname,'../Pages/JS')))
+	//   let renderPage = (req,res) => {
+	//     res.sendFile(path.join(__dirname,"../Pages/index.html"));
+	//   };
+	//   app.get('/',renderPage);
+		io = socket(server).listen(2053);
+		io.on('connection', (socket) => {
+			console.log(`Client Connected [id=${socket.id}]`);
+			socket.emit('success', { message: 'Server Accepting Conncetion' });
+		});
       res();
     });
   },
