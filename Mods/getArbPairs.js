@@ -153,7 +153,8 @@ let triangle = {
   },
   calculate: async () => {
     console.log('Finished SetUp. Open "http://127.0.0.1:3000/" in your browser to access. Happy Trading!!');
-    const fee_percentage = 0.1 * 0.01;
+    // const fee_percentage = 0.1 * 0.01;
+	const fee_percentage = 0.075 * 0.01;
     const binanceRest = new api.BinanceRest({
         key: binanceApiKey, // Get this from your account on binance.com
         secret: binanceSecretKey, // Same for this
