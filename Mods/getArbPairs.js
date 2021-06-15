@@ -592,7 +592,7 @@ let triangle = {
 							third_symbol2_amount: amount3.minus(fee3).toNumber(),
 							fee_amount: total_fee.toNumber(),
 							fee_percentage: total_percentage.toNumber(),
-							profit_amount: amount3.minus(fee3).minius(setting.init_amount).toNumber(),
+							profit_amount: amount3.minus(fee3.plus(setting.init_amount)).toNumber(),
 							profit_percentage: profitPercentage
 						});
 						//   console.log(trade);
