@@ -15,6 +15,7 @@ const fs = require('fs');
 const { Op, Sequelize } = require('sequelize');
 const { exit } = require('process');
 const routes = require('../routes');
+const moment = require('moment');
 let app,server,io;
 
 const binanceApiKey = process.env.BINANCE_KEY;
@@ -614,11 +615,7 @@ let triangle = {
 			}
 			const date = new Date();
 			const statisticsInfo = await Model.trade_transaction.findOne({
-			  where: {
-			    createdAt: {
-			      [Op.gte]: date,
-			    }
-			  },
+			  where: Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), moment(date).format('YYYY-MM-DD')),
 			  attributes: [
 			    [Sequelize.fn('SUM', Sequelize.col('profit_amount')), 'profit_amount'],
 			    [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
