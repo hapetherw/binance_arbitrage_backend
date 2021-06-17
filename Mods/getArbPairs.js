@@ -304,7 +304,7 @@ let triangle = {
 					d.amount3 = amount2.toNumber();
 					d.amount4 = amount3.toNumber();
 					d.is_done = false;
-					console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
+					// console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
 					if(profitPercentage >= setting.profit_percentage) {
 						let isStop = false;
 						console.log(profitPercentage.toNumber(), total_percentage.toNumber());
