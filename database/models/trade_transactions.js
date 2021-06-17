@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
     profit_percentage: DataTypes.DOUBLE,
     status: DataTypes.ENUM('COMPLETE', 'PROGRESS', 'FAIL'),
     note: DataTypes.STRING,
+    result_fee_amount: DataTypes.DOUBLE,
+    result_fee_percentage: DataTypes.DOUBLE,
+    result_profit_amount: DataTypes.DOUBLE,
+    result_profit_percentage: DataTypes.DOUBLE,
   }, {
     sequelize,
     modelName: 'trade_transaction',

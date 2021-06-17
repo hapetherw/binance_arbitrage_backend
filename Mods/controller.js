@@ -97,7 +97,8 @@ exports.getTransactions = async (req, res) => {
             [Op.between]: [startDate, endDate],
         };
         const transactions = await Model.trade_transaction.findAll({
-            where: whereQuery
+            where: whereQuery,
+			order: [['id', 'DESC']]
         });
         return res.json({
             transactions
