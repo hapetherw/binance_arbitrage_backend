@@ -18,6 +18,8 @@ const routes = require('../routes');
 const moment = require('moment');
 let app,server,io;
 
+const delay = interval => new Promise(resolve => setTimeout(resolve, interval));
+
 const binanceApiKey = process.env.BINANCE_KEY;
 const binanceSecretKey = process.env.BINANCE_SECRET;
 
@@ -157,161 +159,164 @@ let triangle = {
     const fee_percentage = 0.1 * 0.01;
 	// const fee_percentage = 0.075 * 0.01;
     let binanceWS = new api.BinanceWS();
-	await mutex.runExclusive(async () => {
-		binanceWS.onAllTickers(async (data) => {
-			let BNBExchangeRate = 1;
-			const setting = await Model.setting.findOne({
-				where: {
-					id: 1
-				}
-			});
-			
-			console.log(setting.is_paused);
-			const accountInfo = await binanceRest.account();
-			let accountBalance = 0;
-			const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
-			if (balanceObj) {
-			  accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
+	binanceWS.onAllTickers(async (data) => {
+		let BNBExchangeRate = 1;
+		const setting = await Model.setting.findOne({
+			where: {
+				id: 1
 			}
-			const date = new Date();
-			const statisticsInfo = await Model.trade_transaction.findOne({
-			  where: Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), moment(date).format('YYYY-MM-DD')),
-			  attributes: [
-			    [Sequelize.fn('SUM', Sequelize.col('result_profit_amount')), 'result_profit_amount'],
-			    [Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
-			  ]
-			});
-			const totalProfitInfo = await Model.trade_transaction.findOne({
-			  attributes: [
-			    [Sequelize.fn('SUM', Sequelize.col('result_profit_amount')), 'result_profit_amount']
-			  ]
-			});
-			await io.sockets.emit("ARBITRAGE_STATISTICS",{
-				accountCurrency: setting.base_coin,
-			  accountBalance,
-			  statisticsInfo,
-			  totalProfitInfo
-			});
+		});
+		
+		console.log(setting.is_paused);
+		const accountInfo = await binanceRest.account();
+		let accountBalance = 0;
+		const balanceObj = accountInfo.balances.find(balance => balance.asset === setting.base_coin);
+		if (balanceObj) {
+			accountBalance = parseFloat(balanceObj['free']) - parseFloat(balanceObj['locked']);
+		}
+		const date = new Date();
+		const statisticsInfo = await Model.trade_transaction.findOne({
+			where: Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), moment(date).format('YYYY-MM-DD')),
+			attributes: [
+			[Sequelize.fn('SUM', Sequelize.col('result_profit_amount')), 'result_profit_amount'],
+			[Sequelize.fn('COUNT', Sequelize.col('id')), 'order_count']
+			]
+		});
+		const totalProfitInfo = await Model.trade_transaction.findOne({
+			attributes: [
+			[Sequelize.fn('SUM', Sequelize.col('result_profit_amount')), 'result_profit_amount']
+			]
+		});
+		await io.sockets.emit("ARBITRAGE_STATISTICS",{
+			accountCurrency: setting.base_coin,
+			accountBalance,
+			statisticsInfo,
+			totalProfitInfo
+		});
 
-			if (setting.is_paused) {
-				return;
-			}
-			if (setting.base_coin !== 'BNB') {
-				let priceData = await binanceRest.bookTicker({
-					symbol: 'BNB' + setting.base_coin
+		if (setting.is_paused) {
+			return;
+		}
+		if (setting.base_coin !== 'BNB') {
+			let priceData = await binanceRest.bookTicker({
+				symbol: 'BNB' + setting.base_coin
+			});
+			if (priceData.hasOwnProperty("code") && priceData.code == -1121) {
+				priceData = await binanceRest.bookTicker({
+					symbol: setting.base_coin + 'BNB'
 				});
 				if (priceData.hasOwnProperty("code") && priceData.code == -1121) {
-					priceData = await binanceRest.bookTicker({
-						symbol: setting.base_coin + 'BNB'
-					});
-					if (priceData.hasOwnProperty("code") && priceData.code == -1121) {
-						console.log('No symbols BNB-', setting.base_coin);
-						return; 
-					} else {
-						BNBExchangeRate = 1 / Number(priceData.askPrice);
-					}
+					console.log('No symbols BNB-', setting.base_coin);
+					return; 
 				} else {
-					BNBExchangeRate = Number(priceData.bidPrice);
+					BNBExchangeRate = 1 / Number(priceData.askPrice);
 				}
+			} else {
+				BNBExchangeRate = Number(priceData.bidPrice);
 			}
-			console.log('BNBExchangeRate: ', BNBExchangeRate);
-			//Update JSON
-			data.forEach(d => {
-			symValJ[d.symbol].bidPrice = parseFloat(d.bestBid);
-			symValJ[d.symbol].askPrice = parseFloat(d.bestAskPrice);
-			});
-			//Perform calculation and send alerts
-			await pairs.filter(d => d.d1 === setting.base_coin).forEach(async d => {
-				let total_fee = 0;
-				let fee1, fee2, fee3;
-				let amount1, amount2, amount3;
-				let amount = new Big(setting.init_amount);
-				//continue if price is not updated for any symbol
-				if(symValJ[d.lv1]["bidPrice"] && symValJ[d.lv2]["bidPrice"] && symValJ[d.lv3]["bidPrice"]){
-					//Level 1 calculation
-					let lv_calc,lv_str;
-					if(d.l1 === 'num'){
-						lv_calc = symValJ[d.lv1]["bidPrice"];
-						// lv_str = d.d1 +  '->' + d.lv1 + "['bidP']['" + symValJ[d.lv1]["bidPrice"] + "']" + '->' + d.d2 + '<br/>';
-						amount1 = amount.times(symValJ[d.lv1]["bidPrice"]);
-						fee1 = amount1.times(fee_percentage);
-						// amount = amount1.minus(fee1);
-						total_fee = fee1.times(1).div(symValJ[d.lv1]["askPrice"]);
-						d.ex_price1 = symValJ[d.lv1]["bidPrice"];
-					}
-					else{
-						lv_calc = 1/symValJ[d.lv1]["askPrice"];
-						// lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
-						amount1 = amount.times(1).div(symValJ[d.lv1]["askPrice"]);
-						fee1 = amount1.times(fee_percentage);
-						// amount = amount1.minus(fee1);
-						total_fee = fee1.times(symValJ[d.lv1]["bidPrice"]);
-						d.ex_price1 = symValJ[d.lv1]["askPrice"];
-					}
+		}
+		console.log('BNBExchangeRate: ', BNBExchangeRate);
+		//Update JSON
+		data.forEach(d => {
+		symValJ[d.symbol].bidPrice = parseFloat(d.bestBid);
+		symValJ[d.symbol].askPrice = parseFloat(d.bestAskPrice);
+		});
+		// await mutex.runExclusive(async () => {
+		//Perform calculation and send alerts
+		await pairs.filter(d => d.d1 === setting.base_coin).forEach(async d => {
+			let total_fee = 0;
+			let fee1, fee2, fee3;
+			let amount1, amount2, amount3;
+			let amount = new Big(setting.init_amount);
+			//continue if price is not updated for any symbol
+			if(symValJ[d.lv1]["bidPrice"] && symValJ[d.lv2]["bidPrice"] && symValJ[d.lv3]["bidPrice"]){
+				//Level 1 calculation
+				let lv_calc,lv_str;
+				if(d.l1 === 'num'){
+					lv_calc = symValJ[d.lv1]["bidPrice"];
+					// lv_str = d.d1 +  '->' + d.lv1 + "['bidP']['" + symValJ[d.lv1]["bidPrice"] + "']" + '->' + d.d2 + '<br/>';
+					amount1 = amount.times(symValJ[d.lv1]["bidPrice"]);
+					fee1 = amount1.times(fee_percentage);
+					// amount = amount1.minus(fee1);
+					total_fee = fee1.times(1).div(symValJ[d.lv1]["askPrice"]);
+					d.ex_price1 = symValJ[d.lv1]["bidPrice"];
+				}
+				else{
+					lv_calc = 1/symValJ[d.lv1]["askPrice"];
+					// lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
+					amount1 = amount.times(1).div(symValJ[d.lv1]["askPrice"]);
+					fee1 = amount1.times(fee_percentage);
+					// amount = amount1.minus(fee1);
+					total_fee = fee1.times(symValJ[d.lv1]["bidPrice"]);
+					d.ex_price1 = symValJ[d.lv1]["askPrice"];
+				}
 
-					//Level 2 calculation
-					if(d.l2 === 'num'){
-						lv_calc *= symValJ[d.lv2]["bidPrice"];
-						//   lv_str  += d.d2 +  '->' + d.lv2 + "['bidP']['" + symValJ[d.lv2]["bidPrice"] + "']" +  '->' + d.d3+ '<br/>';
-						amount2 = amount1.times(symValJ[d.lv2]["bidPrice"]);
-						fee2 = amount2.times(fee_percentage);
-						// amount = amount2.minus(fee2);
-						d.ex_price2 = symValJ[d.lv2]["bidPrice"];
-						}
-					else{
-						lv_calc *= 1/symValJ[d.lv2]["askPrice"];
-						//   lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
-						amount2 = amount1.times(1).div(symValJ[d.lv2]["askPrice"]);
-						fee2 = amount2.times(fee_percentage);
-						// amount = amount2.minus(fee2);
-						d.ex_price2 = symValJ[d.lv2]["askPrice"];
+				//Level 2 calculation
+				if(d.l2 === 'num'){
+					lv_calc *= symValJ[d.lv2]["bidPrice"];
+					//   lv_str  += d.d2 +  '->' + d.lv2 + "['bidP']['" + symValJ[d.lv2]["bidPrice"] + "']" +  '->' + d.d3+ '<br/>';
+					amount2 = amount1.times(symValJ[d.lv2]["bidPrice"]);
+					fee2 = amount2.times(fee_percentage);
+					// amount = amount2.minus(fee2);
+					d.ex_price2 = symValJ[d.lv2]["bidPrice"];
 					}
+				else{
+					lv_calc *= 1/symValJ[d.lv2]["askPrice"];
+					//   lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
+					amount2 = amount1.times(1).div(symValJ[d.lv2]["askPrice"]);
+					fee2 = amount2.times(fee_percentage);
+					// amount = amount2.minus(fee2);
+					d.ex_price2 = symValJ[d.lv2]["askPrice"];
+				}
 
-					//Level 3 calculation
-					if(d.l3 === 'num'){
-						total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
+				//Level 3 calculation
+				if(d.l3 === 'num'){
+					total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
 
-						lv_calc *= symValJ[d.lv3]["bidPrice"];
-						//   lv_str  += d.d3 +  '->' + d.lv3 + "['bidP']['" + symValJ[d.lv3]["bidPrice"] + "']" + '->' +  d.d1 ;
-						amount3 = amount2.times(symValJ[d.lv3]["bidPrice"]);
-						fee3 = amount3.times(fee_percentage);
-						// amount = amount3.minus(fee3);
-						total_fee = total_fee.plus(fee3);
-						d.ex_price3 = symValJ[d.lv3]["bidPrice"];
-						}
-					else{
-						total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
-
-						lv_calc *= 1/symValJ[d.lv3]["askPrice"];
-						//   lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
-						amount3 = amount2.times(1).div(symValJ[d.lv3]["askPrice"]);
-						fee3 = amount3.times(fee_percentage);
-						// amount = amount3.minus(fee3);
-						total_fee = total_fee.plus(fee3);
-						d.ex_price3 = symValJ[d.lv3]["askPrice"];
+					lv_calc *= symValJ[d.lv3]["bidPrice"];
+					//   lv_str  += d.d3 +  '->' + d.lv3 + "['bidP']['" + symValJ[d.lv3]["bidPrice"] + "']" + '->' +  d.d1 ;
+					amount3 = amount2.times(symValJ[d.lv3]["bidPrice"]);
+					fee3 = amount3.times(fee_percentage);
+					// amount = amount3.minus(fee3);
+					total_fee = total_fee.plus(fee3);
+					d.ex_price3 = symValJ[d.lv3]["bidPrice"];
 					}
-					const total_percentage = total_fee.div(setting.init_amount).times(100);
-					d.fee_percentage = total_percentage.toNumber();
-					d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
-					// d.profit_percentage = d.value - d.fee_percentage;
-					// const profitPercentage = d.profit_percentage;
-					const profit = amount3.minus(total_fee.plus(setting.init_amount));
-					const profitPercentage = profit.div(setting.init_amount).times(100);
-					d.profit_percentage = profitPercentage.toNumber();
-					d.date = new Date();
-					d.amount1 = setting.init_amount;
-					d.amount2 = amount1.toNumber();
-					d.amount3 = amount2.toNumber();
-					d.amount4 = amount3.toNumber();
-					d.is_done = false;
-					if(profitPercentage >= setting.profit_percentage) {
-						let isStop = false;
-						console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
-						console.log(profitPercentage.toNumber(), total_percentage.toNumber(), d.value, d.value-d.fee_percentage);
-						let result1, result2, result3;
+				else{
+					total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
+
+					lv_calc *= 1/symValJ[d.lv3]["askPrice"];
+					//   lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
+					amount3 = amount2.times(1).div(symValJ[d.lv3]["askPrice"]);
+					fee3 = amount3.times(fee_percentage);
+					// amount = amount3.minus(fee3);
+					total_fee = total_fee.plus(fee3);
+					d.ex_price3 = symValJ[d.lv3]["askPrice"];
+				}
+				const total_percentage = total_fee.div(setting.init_amount).times(100);
+				d.fee_percentage = total_percentage.toNumber();
+				d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
+				// d.profit_percentage = d.value - d.fee_percentage;
+				// const profitPercentage = d.profit_percentage;
+				const profit = amount3.minus(total_fee.plus(setting.init_amount));
+				const profitPercentage = profit.div(setting.init_amount).times(100);
+				d.profit_percentage = profitPercentage.toNumber();
+				d.date = new Date();
+				d.amount1 = setting.init_amount;
+				d.amount2 = amount1.toNumber();
+				d.amount3 = amount2.toNumber();
+				d.amount4 = amount3.toNumber();
+				d.is_done = false;
+				if(profitPercentage >= setting.profit_percentage) {
+					let isStop = false;
+					console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
+					console.log(profitPercentage.toNumber(), total_percentage.toNumber(), d.value, d.value-d.fee_percentage);
+					let result1, result2, result3;
+					await delay(10);
+					await mutex.runExclusive(async () => {
 						const customOrderId1 = binanceRest.generateNewOrderId();
 						const customOrderId2 = binanceRest.generateNewOrderId();
 						const customOrderId3 = binanceRest.generateNewOrderId();
+					
 						let quantity1 = new Big(setting.init_amount.toFixed(8));
 						let quantity2 = new Big(amount1.toFixed(8));
 						let quantity3 = new Big(amount2.toFixed(8));
@@ -664,13 +669,13 @@ let triangle = {
 						d.is_done = true;
 						console.log('-----------------final----------------');
 						}
-					}
+					});
 				}
-			});
-
-			//Send Socket
-			await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.d1 === setting.base_coin)).desc(u => u.value));
+			}
 		});
+		// });
+		//Send Socket
+		await io.sockets.emit("ARBITRAGE",sort(pairs.filter(d => d.d1 === setting.base_coin && d.value > 0)).desc(u => u.value));
 	});
   },
   test: async () => {
