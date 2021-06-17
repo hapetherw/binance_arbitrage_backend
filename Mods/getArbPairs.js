@@ -231,7 +231,7 @@ let triangle = {
 					//Level 1 calculation
 					let lv_calc,lv_str;
 					if(d.l1 === 'num'){
-						// lv_calc = symValJ[d.lv1]["bidPrice"];
+						lv_calc = symValJ[d.lv1]["bidPrice"];
 						// lv_str = d.d1 +  '->' + d.lv1 + "['bidP']['" + symValJ[d.lv1]["bidPrice"] + "']" + '->' + d.d2 + '<br/>';
 						amount1 = amount.times(symValJ[d.lv1]["bidPrice"]);
 						fee1 = amount1.times(fee_percentage);
@@ -240,7 +240,7 @@ let triangle = {
 						d.ex_price1 = symValJ[d.lv1]["bidPrice"];
 					}
 					else{
-						// lv_calc = 1/symValJ[d.lv1]["askPrice"];
+						lv_calc = 1/symValJ[d.lv1]["askPrice"];
 						// lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
 						amount1 = amount.times(1).div(symValJ[d.lv1]["askPrice"]);
 						fee1 = amount1.times(fee_percentage);
@@ -251,7 +251,7 @@ let triangle = {
 
 					//Level 2 calculation
 					if(d.l2 === 'num'){
-						// lv_calc *= symValJ[d.lv2]["bidPrice"];
+						lv_calc *= symValJ[d.lv2]["bidPrice"];
 						//   lv_str  += d.d2 +  '->' + d.lv2 + "['bidP']['" + symValJ[d.lv2]["bidPrice"] + "']" +  '->' + d.d3+ '<br/>';
 						amount2 = amount1.times(symValJ[d.lv2]["bidPrice"]);
 						fee2 = amount2.times(fee_percentage);
@@ -259,7 +259,7 @@ let triangle = {
 						d.ex_price2 = symValJ[d.lv2]["bidPrice"];
 						}
 					else{
-						// lv_calc *= 1/symValJ[d.lv2]["askPrice"];
+						lv_calc *= 1/symValJ[d.lv2]["askPrice"];
 						//   lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
 						amount2 = amount1.times(1).div(symValJ[d.lv2]["askPrice"]);
 						fee2 = amount2.times(fee_percentage);
@@ -271,7 +271,7 @@ let triangle = {
 					if(d.l3 === 'num'){
 						total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
 
-						// lv_calc *= symValJ[d.lv3]["bidPrice"];
+						lv_calc *= symValJ[d.lv3]["bidPrice"];
 						//   lv_str  += d.d3 +  '->' + d.lv3 + "['bidP']['" + symValJ[d.lv3]["bidPrice"] + "']" + '->' +  d.d1 ;
 						amount3 = amount2.times(symValJ[d.lv3]["bidPrice"]);
 						fee3 = amount3.times(fee_percentage);
@@ -282,7 +282,7 @@ let triangle = {
 					else{
 						total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
 
-						// lv_calc *= 1/symValJ[d.lv3]["askPrice"];
+						lv_calc *= 1/symValJ[d.lv3]["askPrice"];
 						//   lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
 						amount3 = amount2.times(1).div(symValJ[d.lv3]["askPrice"]);
 						fee3 = amount3.times(fee_percentage);
@@ -292,7 +292,7 @@ let triangle = {
 					}
 					const total_percentage = total_fee.div(setting.init_amount).times(100);
 					d.fee_percentage = total_percentage.toNumber();
-					// d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
+					d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
 					// d.profit_percentage = d.value - d.fee_percentage;
 					// const profitPercentage = d.profit_percentage;
 					const profit = amount3.minus(total_fee.plus(setting.init_amount));
@@ -304,10 +304,10 @@ let triangle = {
 					d.amount3 = amount2.toNumber();
 					d.amount4 = amount3.toNumber();
 					d.is_done = false;
-					// console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
 					if(profitPercentage >= setting.profit_percentage) {
 						let isStop = false;
-						console.log(profitPercentage.toNumber(), total_percentage.toNumber());
+						console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
+						console.log(profitPercentage.toNumber(), total_percentage.toNumber(), d.value, d.value-d.fee_percentage);
 						let result1, result2, result3;
 						const customOrderId1 = binanceRest.generateNewOrderId();
 						const customOrderId2 = binanceRest.generateNewOrderId();
