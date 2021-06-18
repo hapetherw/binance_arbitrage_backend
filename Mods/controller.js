@@ -1,5 +1,6 @@
 const Model = require('../database/models');
 const { Op, Sequelize, where } = require('sequelize');
+const moment = require('moment');
 
 exports.getPauseSetting = async (req, res) => {
     try {
@@ -97,7 +98,16 @@ exports.getTransactions = async (req, res) => {
             [Op.between]: [startDate, endDate],
         };
         const transactions = await Model.trade_transaction.findAll({
-            where: whereQuery,
+            where: {
+                [Op.and]: [
+                    Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), {
+                        [Op.gte]: moment(startDate).format('YYYY-MM-DD')
+                    }),
+                    Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), {
+                        [Op.lte]: moment(endDate).format('YYYY-MM-DD')
+                    })
+                ]
+            },
 			order: [['id', 'DESC']]
         });
         return res.json({
