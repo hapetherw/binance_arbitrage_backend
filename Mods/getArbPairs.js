@@ -230,6 +230,10 @@ let triangle = {
 			let amount = new Big(setting.init_amount);
 			//continue if price is not updated for any symbol
 			if(symValJ[d.lv1]["bidPrice"] && symValJ[d.lv2]["bidPrice"] && symValJ[d.lv3]["bidPrice"]){
+				amount = module.exports.checkStepSize(d.lv1, amount, d.l1);
+				if (module.exports.applyFilters(d.lv1, amount, d.l1, symValJ[d.lv1]["bidPrice"]) != 1) {
+					return;
+				}
 				//Level 1 calculation
 				let lv_calc,lv_str;
 				if(d.l1 === 'num'){
@@ -251,6 +255,10 @@ let triangle = {
 					d.ex_price1 = symValJ[d.lv1]["askPrice"];
 				}
 
+				amount1 = module.exports.checkStepSize(d.lv2, amount1, d.l2);
+				if (module.exports.applyFilters(d.lv2, amount1, d.l2, symValJ[d.lv2]["bidPrice"]) != 1) {
+					return;
+				}
 				//Level 2 calculation
 				if(d.l2 === 'num'){
 					lv_calc *= symValJ[d.lv2]["bidPrice"];
@@ -268,7 +276,10 @@ let triangle = {
 					// amount = amount2.minus(fee2);
 					d.ex_price2 = symValJ[d.lv2]["askPrice"];
 				}
-
+				amount2 = module.exports.checkStepSize(d.lv3, amount2, d.l3);
+				if (module.exports.applyFilters(d.lv3, amount1, d.l3, symValJ[d.lv3]["bidPrice"]) != 1) {
+					return;
+				}
 				//Level 3 calculation
 				if(d.l3 === 'num'){
 					total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
@@ -292,16 +303,16 @@ let triangle = {
 					total_fee = total_fee.plus(fee3);
 					d.ex_price3 = symValJ[d.lv3]["askPrice"];
 				}
-				const total_percentage = total_fee.div(setting.init_amount).times(100);
+				const total_percentage = total_fee.div(amount).times(100);
 				d.fee_percentage = total_percentage.toNumber();
 				d.value = parseFloat(parseFloat((lv_calc - 1)*100).toFixed(3));
 				// d.profit_percentage = d.value - d.fee_percentage;
 				// const profitPercentage = d.profit_percentage;
-				const profit = amount3.minus(total_fee.plus(setting.init_amount));
-				const profitPercentage = profit.div(setting.init_amount).times(100);
+				const profit = amount3.minus(total_fee.plus(amount));
+				const profitPercentage = profit.div(amount).times(100);
 				d.profit_percentage = profitPercentage.toNumber();
 				d.date = new Date();
-				d.amount1 = setting.init_amount;
+				d.amount1 = amount;
 				d.amount2 = amount1.toNumber();
 				d.amount3 = amount2.toNumber();
 				d.amount4 = amount3.toNumber();
@@ -317,7 +328,7 @@ let triangle = {
 						const customOrderId2 = binanceRest.generateNewOrderId();
 						const customOrderId3 = binanceRest.generateNewOrderId();
 					
-						let quantity1 = new Big(setting.init_amount.toFixed(8));
+						let quantity1 = new Big(amount.toFixed(8));
 						let quantity2 = new Big(amount1.toFixed(8));
 						let quantity3 = new Big(amount2.toFixed(8));
 						let quantity4 = 0;
@@ -713,10 +724,11 @@ let triangle = {
     };
   },
   applyFilters (symbol, amount, type, bidPrice) {
+	  amount = amount.toNumber();
 	const minQty1 = Number(filters[symbol]['LOT_SIZE']['minQty']);
 	const maxQty1 = Number(filters[symbol]['LOT_SIZE']['maxQty']);
-	const minQty2 = Number(filters[symbol]['MARKET_LOT_SIZE']['minQty']);
-	const maxQty2 = Number(filters[symbol]['MARKET_LOT_SIZE']['maxQty']);
+	const minQty2 = filters[symbol].hasOwnProperty('MARKET_LOT_SIZE') ? Number(filters[symbol]['MARKET_LOT_SIZE']['minQty']) : 0;
+	const maxQty2 = filters[symbol].hasOwnProperty('MARKET_LOT_SIZE') ? Number(filters[symbol]['MARKET_LOT_SIZE']['maxQty']) : 9999999;
 	const minNotional = Number(filters[symbol]['MIN_NOTIONAL']['minNotional']);
 	if (type === 'num') {
 		if (amount >= minQty1 && amount <= maxQty1 && 
