@@ -1,6 +1,5 @@
 const Model = require('../database/models');
 const { Op, Sequelize, where } = require('sequelize');
-const moment = require('moment');
 
 exports.getPauseSetting = async (req, res) => {
     try {
@@ -92,22 +91,13 @@ exports.getTransactions = async (req, res) => {
     const { filterStartDate, filterEndDate } = req.body;
     try {
         const whereQuery = {};
-        const startDate = new Date(filterStartDate);
-        const endDate = new Date(filterEndDate);
+        // const startDate = new Date(filterStartDate);
+        // const endDate = new Date(filterEndDate);
         whereQuery['createdAt'] = {
-            [Op.between]: [startDate, endDate],
+            [Op.between]: [filterStartDate+'T00:00:00.000Z', filterEndDate+'T23:59:59.000Z'],
         };
         const transactions = await Model.trade_transaction.findAll({
-            where: {
-                [Op.and]: [
-                    Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), {
-                        [Op.gte]: moment(startDate).format('YYYY-MM-DD')
-                    }),
-                    Sequelize.where(Sequelize.fn('DATE_FORMAT', Sequelize.col('createdAt'), '%Y-%m-%d'), {
-                        [Op.lte]: moment(endDate).format('YYYY-MM-DD')
-                    })
-                ]
-            },
+            where: whereQuery,
 			order: [['id', 'DESC']]
         });
         return res.json({
