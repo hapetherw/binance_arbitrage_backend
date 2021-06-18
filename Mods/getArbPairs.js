@@ -230,10 +230,13 @@ let triangle = {
 			let amount = new Big(setting.init_amount);
 			//continue if price is not updated for any symbol
 			if(symValJ[d.lv1]["bidPrice"] && symValJ[d.lv2]["bidPrice"] && symValJ[d.lv3]["bidPrice"]){
+				// console.log('before amount', amount.toNumber());
 				amount = module.exports.checkStepSize(d.lv1, amount, d.l1);
 				if (module.exports.applyFilters(d.lv1, amount, d.l1, symValJ[d.lv1]["bidPrice"]) != 1) {
+					// console.log('amount returned', d.lv1, amount.toNumber(), d.l1, symValJ[d.lv1]["bidPrice"]);
 					return;
 				}
+				// console.log('after amount', amount.toNumber(), d.lv1, d.l1);
 				//Level 1 calculation
 				let lv_calc,lv_str;
 				if(d.l1 === 'num'){
@@ -254,11 +257,13 @@ let triangle = {
 					total_fee = fee1.times(symValJ[d.lv1]["bidPrice"]);
 					d.ex_price1 = symValJ[d.lv1]["askPrice"];
 				}
-
+				// console.log('before amount1', amount1.toNumber());
 				amount1 = module.exports.checkStepSize(d.lv2, amount1, d.l2);
 				if (module.exports.applyFilters(d.lv2, amount1, d.l2, symValJ[d.lv2]["bidPrice"]) != 1) {
+					// console.log('amount1 returned', d.lv2, amount1.toNumber(), d.l2, symValJ[d.lv2]["bidPrice"]);
 					return;
 				}
+				// console.log('after amount1', amount1.toNumber(), d.lv2, d.l2);
 				//Level 2 calculation
 				if(d.l2 === 'num'){
 					lv_calc *= symValJ[d.lv2]["bidPrice"];
@@ -276,10 +281,13 @@ let triangle = {
 					// amount = amount2.minus(fee2);
 					d.ex_price2 = symValJ[d.lv2]["askPrice"];
 				}
+				// console.log('before amount2', amount2.toNumber());
 				amount2 = module.exports.checkStepSize(d.lv3, amount2, d.l3);
-				if (module.exports.applyFilters(d.lv3, amount1, d.l3, symValJ[d.lv3]["bidPrice"]) != 1) {
+				if (module.exports.applyFilters(d.lv3, amount2, d.l3, symValJ[d.lv3]["bidPrice"]) != 1) {
+					// console.log('amount2 returned', d.lv3, amount2.toNumber(), d.l3, symValJ[d.lv3]["bidPrice"]);
 					return;
 				}
+				// console.log('after amount2', amount2.toNumber(), d.lv3, d.l3);
 				//Level 3 calculation
 				if(d.l3 === 'num'){
 					total_fee = total_fee.plus(fee2.times(symValJ[d.lv3]["bidPrice"]));
