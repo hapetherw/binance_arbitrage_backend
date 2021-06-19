@@ -327,7 +327,7 @@ let triangle = {
 				d.is_done = false;
 				if(profitPercentage >= setting.profit_percentage) {
 					let isStop = false;
-					console.log(amount3.toNumber(), total_fee.toNumber(), profitPercentage.toNumber(), total_percentage.toNumber());
+					console.log(amount.toNumber(), amount1.toNumber(), amount2.toNumber(), amount3.toNumber(), total_fee.toNumber());
 					console.log(profitPercentage.toNumber(), total_percentage.toNumber(), d.value, d.value-d.fee_percentage);
 					let result1, result2, result3;
 					await delay(10);
