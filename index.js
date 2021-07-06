@@ -8,10 +8,3 @@ T.startServer()
   }).catch(err => {
     console.log(err);
   });
-
-// T.startServer()
-//   .then(() => {
-//     T.test();
-//   }).catch(err => {
-//     console.log(err);
-//   });

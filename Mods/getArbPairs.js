@@ -125,7 +125,6 @@ let triangle = {
               });
             });
           });
-          //console.log(pairs.length + ',' + symbols.length + ',' + validPairs.length );
           res();
 
         }).catch(err => {
@@ -141,11 +140,6 @@ let triangle = {
 		app.use(express.json());
 		app.use(express.urlencoded({ extended: true }));
 		app.use('/api/', routes);
-	//   app.use('/JS',express.static(path.join(__dirname,'../Pages/JS')))
-	//   let renderPage = (req,res) => {
-	//     res.sendFile(path.join(__dirname,"../Pages/index.html"));
-	//   };
-	//   app.get('/',renderPage);
 		io = socket(server).listen(2053);
 		io.on('connection', (socket) => {
 			console.log(`Client Connected [id=${socket.id}]`);
@@ -230,13 +224,10 @@ let triangle = {
 			let amount = new Big(setting.init_amount);
 			//continue if price is not updated for any symbol
 			if(symValJ[d.lv1]["bidPrice"] && symValJ[d.lv2]["bidPrice"] && symValJ[d.lv3]["bidPrice"]){
-				// console.log('before amount', amount.toNumber());
 				amount = module.exports.checkStepSize(d.lv1, amount, d.l1);
 				if (module.exports.applyFilters(d.lv1, amount, d.l1, symValJ[d.lv1]["bidPrice"]) != 1) {
-					// console.log('amount returned', d.lv1, amount.toNumber(), d.l1, symValJ[d.lv1]["bidPrice"]);
 					return;
 				}
-				// console.log('after amount', amount.toNumber(), d.lv1, d.l1);
 				//Level 1 calculation
 				let lv_calc,lv_str;
 				if(d.l1 === 'num'){
@@ -245,25 +236,22 @@ let triangle = {
 					amount1 = amount.times(symValJ[d.lv1]["bidPrice"]);
 					fee1 = amount1.times(fee_percentage);
 					// amount = amount1.minus(fee1);
-					total_fee = fee1.times(1).div(symValJ[d.lv1]["askPrice"]);
+					total_fee = fee1.div(symValJ[d.lv1]["askPrice"]);
 					d.ex_price1 = symValJ[d.lv1]["bidPrice"];
 				}
 				else{
 					lv_calc = 1/symValJ[d.lv1]["askPrice"];
 					// lv_str = d.d1 +  '->' + d.lv1 + "['askP']['" + symValJ[d.lv1]["askPrice"] + "']" + '->' + d.d2 + '<br/>';
-					amount1 = amount.times(1).div(symValJ[d.lv1]["askPrice"]);
+					amount1 = amount.div(symValJ[d.lv1]["askPrice"]);
 					fee1 = amount1.times(fee_percentage);
 					// amount = amount1.minus(fee1);
 					total_fee = fee1.times(symValJ[d.lv1]["bidPrice"]);
 					d.ex_price1 = symValJ[d.lv1]["askPrice"];
 				}
-				// console.log('before amount1', amount1.toNumber());
 				amount1 = module.exports.checkStepSize(d.lv2, amount1, d.l2);
 				if (module.exports.applyFilters(d.lv2, amount1, d.l2, symValJ[d.lv2]["bidPrice"]) != 1) {
-					// console.log('amount1 returned', d.lv2, amount1.toNumber(), d.l2, symValJ[d.lv2]["bidPrice"]);
 					return;
 				}
-				// console.log('after amount1', amount1.toNumber(), d.lv2, d.l2);
 				//Level 2 calculation
 				if(d.l2 === 'num'){
 					lv_calc *= symValJ[d.lv2]["bidPrice"];
@@ -276,7 +264,7 @@ let triangle = {
 				else{
 					lv_calc *= 1/symValJ[d.lv2]["askPrice"];
 					//   lv_str  += d.d2 +  '->' + d.lv2 + "['askP']['" + symValJ[d.lv2]["askPrice"] + "']" +  '->' + d.d3 + '<br/>';
-					amount2 = amount1.times(1).div(symValJ[d.lv2]["askPrice"]);
+					amount2 = amount1.div(symValJ[d.lv2]["askPrice"]);
 					fee2 = amount2.times(fee_percentage);
 					// amount = amount2.minus(fee2);
 					d.ex_price2 = symValJ[d.lv2]["askPrice"];
@@ -301,11 +289,11 @@ let triangle = {
 					d.ex_price3 = symValJ[d.lv3]["bidPrice"];
 					}
 				else{
-					total_fee = total_fee.plus(fee2.times(1).div(symValJ[d.lv3]["askPrice"]));
+					total_fee = total_fee.plus(fee2.div(symValJ[d.lv3]["askPrice"]));
 
 					lv_calc *= 1/symValJ[d.lv3]["askPrice"];
 					//   lv_str += d.d3 +  '->' + d.lv3 + "['askP']['" + symValJ[d.lv3]["askPrice"] + "']" + '->' +  d.d1;
-					amount3 = amount2.times(1).div(symValJ[d.lv3]["askPrice"]);
+					amount3 = amount2.div(symValJ[d.lv3]["askPrice"]);
 					fee3 = amount3.times(fee_percentage);
 					// amount = amount3.minus(fee3);
 					total_fee = total_fee.plus(fee3);
@@ -497,7 +485,6 @@ let triangle = {
 						}
 
 						if (!isStop) {
-							console.log('yes it is running!!!!!!!!!');
 						try {
 							const accountInfo = await binanceRest.account();
 							const balanceObj = accountInfo.balances.find(balance => balance.asset === d.d1);
@@ -684,9 +671,7 @@ let triangle = {
 							result_profit_amount: resultProfitAmount.toNumber(),
 							result_profit_percentage: realProfitPercentage.toNumber()
 						});
-						//   console.log(trade);
 						d.is_done = true;
-						console.log('-----------------final----------------');
 						}
 					});
 				}
@@ -719,9 +704,6 @@ let triangle = {
             type: 'MARKET',
             newClientOrderId: customOrderId,
         });
-        // fs.writeFile('result2.json', JSON.stringify(result1, null, 4), function(err) {
-        //   console.log('okokok');
-        // })
         console.log(JSON.stringify(result1, null, 4));
       } catch(err) {
         console.log('-errr-');
